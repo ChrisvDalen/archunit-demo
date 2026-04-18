@@ -1,0 +1,33 @@
+@startuml
+' =============================================================================
+' Architecture definition for the ArchUnit demo project.
+'
+' This diagram is the SINGLE SOURCE OF TRUTH for allowed layer dependencies.
+' ArchUnit's PlantUmlArchCondition reads this file at test time and enforces
+' that actual Java class dependencies match the arrows drawn here.
+'
+' How to read:
+'   [A] --> [B]    means classes in layer A are ALLOWED to depend on layer B.
+'   No arrow       means the dependency is FORBIDDEN (test fails if it exists).
+'
+' Stereotypes (<<..name..>>) map each component to a Java package pattern.
+' The ".." wildcards work like ArchUnit's resideInAPackage("..name..") rule.
+'
+' Editing workflow:
+'   1. Draw a new arrow here to allow a new cross-layer dependency.
+'   2. Commit the .puml file — no Java rule changes needed.
+'   3. The ArchUnit test automatically picks up the updated diagram.
+' =============================================================================
+
+[Controller] <<..controller..>>
+[Service]    <<..service..>>
+[Repository] <<..repository..>>
+[Model]      <<..model..>>
+
+[Controller] --> [Service]
+[Controller] --> [Model]
+[Service]    --> [Repository]
+[Service]    --> [Model]
+[Repository] --> [Model]
+
+@enduml

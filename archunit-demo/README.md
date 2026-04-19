@@ -67,7 +67,7 @@ required. No drift. No excuses.
 │  Persistence       │  Spring Data JPA / H2 (in-memory)  │
 │  Build             │  Maven 3.x                         │
 │  Architecture      │  Strict 3-tier layered             │
-│  Tests             │  24 architecture rules             │
+│  Tests             │  28 architecture rules             │
 └────────────────────┴────────────────────────────────────┘
 ```
 
@@ -119,7 +119,8 @@ src/test/java/com/demo/archunit/architecture/
 ├── DependencyRuleTest.java
 ├── CodingRulesTest.java          ← shared rule libraries + custom conditions
 ├── FreezingArchRuleTest.java     ← incremental adoption for legacy codebases
-└── PlantUmlArchitectureTest.java ← diagram IS the test
+├── PlantUmlArchitectureTest.java ← diagram IS the test
+└── MemberRulesTest.java          ← field and method level rules
 ```
 
 ---
@@ -128,7 +129,7 @@ src/test/java/com/demo/archunit/architecture/
 
 ```
   /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
-  \/  RULE MATRIX — 24 tests · 7 classes · 0 mercy    \/
+  \/  RULE MATRIX — 28 tests · 8 classes · 0 mercy    \/
   /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 ```
 
@@ -142,6 +143,22 @@ fatal**.
   CONTROLLER  ──▶  SERVICE  ──▶  REPOSITORY  ──▶  MODEL
       ✗──────────────────────────────▶ skip NOT allowed
       ✗──────────────────────▶ upward NOT allowed
+```
+
+```java
+@ArchTest
+static final ArchRule layered_architecture_is_respected =
+    Architectures.layeredArchitecture()
+        .consideringAllDependencies()
+        .layer("Controller").definedBy("com.demo.archunit.controller..")
+        .layer("Service")   .definedBy("com.demo.archunit.service..")
+        .layer("Repository").definedBy("com.demo.archunit.repository..")
+        .layer("Model")     .definedBy("com.demo.archunit.model..")
+
+        .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+        .whereLayer("Service")   .mayOnlyBeAccessedByLayers("Controller")
+        .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
+        .whereLayer("Model")     .mayOnlyBeAccessedByLayers("Controller", "Service", "Repository");
 ```
 
 ---
@@ -160,6 +177,31 @@ fatal**.
   RULE ⑦ : *Manager        →  ██ FORBIDDEN ██
 ```
 
+```java
+// Package → Name: if you're IN this package, your name MUST end with...
+@ArchTest
+static final ArchRule controllers_should_be_named_correctly =
+    classes()
+        .that().resideInAPackage("..controller..")
+        .should().haveSimpleNameEndingWith("Controller")
+        .because("Every class in the controller package should be named *Controller");
+
+// Name → Package: if your name ends with ..., you MUST live in the right package
+@ArchTest
+static final ArchRule classes_named_controller_should_be_in_controller_package =
+    classes()
+        .that().haveSimpleNameEndingWith("Controller")
+        .should().resideInAPackage("..controller..")
+        .because("*Controller classes must live in the controller package");
+
+// Negative rule: forbidden name suffix
+@ArchTest
+static final ArchRule no_classes_should_be_named_Manager =
+    noClasses()
+        .should().haveSimpleNameEndingWith("Manager")
+        .because("We use 'Service' not 'Manager' — please rename to *Service");
+```
+
 ---
 
 ### `[03]` AnnotationRuleTest
@@ -167,9 +209,28 @@ fatal**.
 Ensures Spring stereotypes are never forgotten:
 
 ```java
-  @RestController  ← required on every class in controller package
-  @Service         ← required on every class in service package
-  JpaRepository    ← every repository interface must extend it
+@ArchTest
+static final ArchRule services_should_be_annotated_with_service =
+    classes()
+        .that().resideInAPackage("..service..")
+        .and().areNotInterfaces()
+        .should().beAnnotatedWith(Service.class)
+        .because("Spring must manage service classes — @Service annotation is required");
+
+@ArchTest
+static final ArchRule repositories_should_be_assignable_to_jpa_repository =
+    classes()
+        .that().resideInAPackage("..repository..")
+        .and().areInterfaces()
+        .should().beAssignableTo(JpaRepository.class)
+        .because("All repositories must extend JpaRepository to get CRUD for free");
+
+@ArchTest
+static final ArchRule controllers_should_be_annotated_with_rest_controller =
+    classes()
+        .that().resideInAPackage("..controller..")
+        .should().beAnnotatedWith(RestController.class)
+        .because("All our controllers are REST controllers and must be annotated with @RestController");
 ```
 
 ---
@@ -185,6 +246,31 @@ No upward deps. No circular deps. No exceptions.
   A ──▶ B ──▶ C ──▶ A ?             ██ CYCLE DETECTED ██
 ```
 
+```java
+// Lower layers must not depend on higher layers
+@ArchTest
+static final ArchRule repositories_should_not_depend_on_services =
+    noClasses()
+        .that().resideInAPackage("..repository..")
+        .should().dependOnClassesThat().resideInAPackage("..service..")
+        .because("Repositories are a low-level layer — they must not know about Services");
+
+@ArchTest
+static final ArchRule services_should_not_depend_on_controllers =
+    noClasses()
+        .that().resideInAPackage("..service..")
+        .should().dependOnClassesThat().resideInAPackage("..controller..")
+        .because("Services must not know about Controllers — that would create an upward dependency");
+
+// Cycle detection — works across any number of packages
+@ArchTest
+static final ArchRule no_cycles_between_slices =
+    SlicesRuleDefinition.slices()
+        .matching("com.demo.archunit.(*)..")
+        .should().beFreeOfCycles()
+        .because("Cyclic dependencies make code hard to understand, test, and refactor");
+```
+
 ---
 
 ### `[05]` CodingRulesTest
@@ -194,22 +280,52 @@ Two advanced patterns fused into one:
 **① Shared Rule Library** — imports `ArchTests.in(SharedArchRules.class)`,
 a portable rule set you can distribute as a JAR across every repo in your org:
 
-```
-  ██ System.out / System.err             → use a logger
-  ██ throws Exception / RuntimeException → be specific
-  ██ java.util.logging                   → use SLF4J
-  ██ @Autowired field injection          → constructor injection only
-  ██ deprecated API calls                → upgrade your deps
-  ██ java.util.Date / Calendar           → use java.time
+```java
+// One line imports ALL 6 @ArchTest fields from SharedArchRules:
+@ArchTest
+static final ArchTests SHARED_CODING_RULES = ArchTests.in(SharedArchRules.class);
+
+// Rules included in SharedArchRules:
+//   NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS  → no System.out / System.err
+//   NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS → no throws Exception / RuntimeException
+//   NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING    → use SLF4J instead
+//   NO_CLASSES_SHOULD_USE_FIELD_INJECTION      → constructor injection only
+//   DEPRECATED_API_SHOULD_NOT_BE_USED          → no @Deprecated calls
+//   OLD_DATE_AND_TIME_CLASSES_SHOULD_NOT_BE_USED → use java.time, not java.util.Date
 ```
 
 **② Custom ArchCondition** — a bespoke rule that counts constructor parameters
 on Spring beans. More than 5? Your class has too many responsibilities.
 
 ```java
-  // THE RED PILL: your class has 9 constructor parameters.
-  // You are not following the Single Responsibility Principle.
-  // Wake up, Neo.
+private static final int MAX_DEPENDENCIES = 5;
+
+@ArchTest
+static final ArchRule spring_beans_must_not_exceed_max_dependencies =
+    classes()
+        .that().areAnnotatedWith(Service.class)
+        .or().areAnnotatedWith(Repository.class)
+        .or().areAnnotatedWith(RestController.class)
+        .should(atMostNConstructorDependencies(MAX_DEPENDENCIES))
+        .because("A bean with more than " + MAX_DEPENDENCIES + " dependencies likely violates SRP");
+
+// The custom ArchCondition — extend the DSL with any logic you need:
+private static ArchCondition<JavaClass> atMostNConstructorDependencies(int max) {
+    return new ArchCondition<>("have at most " + max + " constructor dependencies") {
+        @Override
+        public void check(JavaClass javaClass, ConditionEvents events) {
+            for (JavaConstructor constructor : javaClass.getConstructors()) {
+                int paramCount = constructor.getParameterTypes().size();
+                if (paramCount > max) {
+                    events.add(SimpleConditionEvent.violated(constructor,
+                        String.format("Constructor of '%s' has %d dependencies (max allowed: %d) "
+                                + "— consider splitting responsibilities into smaller classes",
+                            javaClass.getSimpleName(), paramCount, max)));
+                }
+            }
+        }
+    };
+}
 ```
 
 ---
@@ -233,6 +349,32 @@ on Spring beans. More than 5? Your class has too many responsibilities.
 
 Frozen state lives in `src/test/resources/archunit_store/` — **commit these
 files** so every developer shares the same baseline.
+
+```java
+// Wrap ANY existing rule with FreezingArchRule.freeze():
+@ArchTest
+static final ArchRule frozen_layer_architecture =
+    FreezingArchRule.freeze(
+        Architectures.layeredArchitecture()
+            .consideringAllDependencies()
+            .layer("Controller").definedBy("com.demo.archunit.controller..")
+            .layer("Service")   .definedBy("com.demo.archunit.service..")
+            .layer("Repository").definedBy("com.demo.archunit.repository..")
+            .layer("Model")     .definedBy("com.demo.archunit.model..")
+            .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+            .whereLayer("Service")   .mayOnlyBeAccessedByLayers("Controller")
+            .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
+            .whereLayer("Model")     .mayOnlyBeAccessedByLayers("Controller", "Service", "Repository")
+    );
+```
+
+```properties
+# src/test/resources/archunit.properties
+freeze.store.default.path=src/test/resources/archunit_store
+freeze.store.default.allowStoreCreation=true
+freeze.store.default.allowStoreUpdate=true
+# Tip: set allowStoreUpdate=false in CI to prevent accidentally silencing new violations
+```
 
 ---
 
@@ -259,6 +401,69 @@ Any Java dependency not represented by an arrow in `architecture.puml` **fails
 the build**. Non-developers can propose architecture changes by editing the
 diagram — no Java knowledge required.
 
+```java
+// Load the diagram from the test classpath:
+private static final URL ARCHITECTURE_DIAGRAM =
+    PlantUmlArchitectureTest.class.getClassLoader().getResource("architecture.puml");
+
+// The diagram IS the rule — any dependency not drawn as an arrow is a violation:
+@ArchTest
+static final ArchRule classes_should_adhere_to_the_plantuml_diagram =
+    classes()
+        .that().resideInAnyPackage(
+            "..controller..",
+            "..service..",
+            "..repository..",
+            "..model..")
+        .should(PlantUmlArchCondition.adhereToPlantUmlDiagram(
+            ARCHITECTURE_DIAGRAM,
+            consideringOnlyDependenciesInDiagram()))  // ignore Spring/JPA framework deps
+        .because("architecture.puml is the single source of truth for allowed layer dependencies");
+```
+
+---
+
+### `[08]` MemberRulesTest
+
+Rules are not limited to class-level. ArchUnit can inspect **fields** and
+**methods** individually — enforcing encapsulation, immutability, and design
+constraints at the member level.
+
+```
+  Entity fields            →  must be private     (no public state)
+  Service fields           →  must be final       (immutable after construction)
+  Controller fields        →  must be final       (immutable after construction)
+  Service methods          →  must not be synchronized (no mutable shared state)
+```
+
+```java
+// Field rule: entity state must be private
+@ArchTest
+static final ArchRule entity_fields_should_be_private =
+    fields()
+        .that().areDeclaredInClassesThat().areAnnotatedWith(Entity.class)
+        .and().areNotStatic()
+        .should().bePrivate()
+        .because("JPA entity state must be encapsulated — expose via getters/setters only");
+
+// Field rule: constructor-injected fields should be final
+@ArchTest
+static final ArchRule service_fields_should_be_final =
+    fields()
+        .that().areDeclaredInClassesThat().areAnnotatedWith(Service.class)
+        .and().areNotStatic()
+        .should().beFinal()
+        .because("Constructor-injected service fields must be final to guarantee immutability");
+
+// Method rule: synchronized methods indicate mutable state in a singleton
+@ArchTest
+static final ArchRule service_methods_should_not_be_synchronized =
+    noMethods()
+        .that().areDeclaredInClassesThat().areAnnotatedWith(Service.class)
+        .should().haveModifier(JavaModifier.SYNCHRONIZED)
+        .because("Stateless Spring services must not synchronize — use concurrent data structures instead");
+```
+
 ---
 
 ## ⬛ JACKING IN — RUN THE TESTS
@@ -271,7 +476,7 @@ mvn test
 # -------------------------------------------------------
 #  T E S T S
 # -------------------------------------------------------
-# Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
 #
 # BUILD SUCCESS
 # Total time: 3.141 s
@@ -338,6 +543,50 @@ mvn test
 mvn test   # → BUILD SUCCESS — architecture is protected
 ```
 
+### ▶ Phase 6 — Introduce a coding rules violation
+
+Add `System.out.println("debug")` anywhere in `ProductService.java`:
+
+```java
+public List<Product> findAll() {
+    System.out.println("debug: findAll called");  // VIOLATION
+    return productRepository.findAll();
+}
+```
+
+```bash
+mvn test
+# ✗ CodingRulesTest FAILED (via SharedArchRules)
+#
+#   no classes should access System.out or System.err,
+#   because they are invisible to log filtering and MDC context,
+#   but method <ProductService.findAll()> accesses field <System.out>
+```
+
+### ▶ Phase 7 — Introduce a field modifier violation
+
+Remove `final` from the `productRepository` field in `ProductService.java`:
+
+```java
+private ProductRepository productRepository;  // VIOLATION — not final
+```
+
+```bash
+mvn test
+# ✗ MemberRulesTest FAILED
+#
+#   fields that are declared in classes that are annotated with @Service
+#   and are not static should be final,
+#   because Constructor-injected service fields must be final to guarantee immutability,
+#   but field <ProductService.productRepository> is not final
+```
+
+### ▶ Phase 8 — Restore and take the exit
+
+```bash
+mvn test   # → BUILD SUCCESS — 28 rules, 0 violations
+```
+
 ---
 
 ## ⬛ WHY ARCHUNIT?
@@ -363,13 +612,22 @@ mvn test   # → BUILD SUCCESS — architecture is protected
 |-----|-------|---------|
 | `layeredArchitecture()` | Declare and enforce layers | `LayerArchitectureTest` |
 | `classes().that()…should()` | Fluent rule builder | `NamingConventionTest` |
+| `haveSimpleNameEndingWith()` | Name suffix check | `NamingConventionTest` |
+| `resideInAPackage()` | Package location check | `NamingConventionTest` |
 | `beAnnotatedWith()` | Annotation enforcement | `AnnotationRuleTest` |
-| `noClasses().should()` | Negative rules | `DependencyRuleTest` |
+| `beAssignableTo()` | Interface/supertype check | `AnnotationRuleTest` |
+| `noClasses().should()` | Negative class rules | `DependencyRuleTest` |
+| `dependOnClassesThat()` | Dependency direction check | `DependencyRuleTest` |
 | `SlicesRuleDefinition.slices()` | Cycle detection | `DependencyRuleTest` |
 | `ArchTests.in(SharedRules.class)` | Portable rule libraries | `CodingRulesTest` |
 | `ArchCondition<JavaClass>` | Custom violation logic | `CodingRulesTest` |
 | `FreezingArchRule.freeze(rule)` | Legacy adoption | `FreezingArchRuleTest` |
 | `adhereToPlantUmlDiagram()` | Diagram-driven tests | `PlantUmlArchitectureTest` |
+| `fields().that()…should()` | Field-level rules | `MemberRulesTest` |
+| `noMethods().that()…should()` | Negative method rules | `MemberRulesTest` |
+| `bePrivate()` / `beFinal()` | Access modifier checks | `MemberRulesTest` |
+| `haveModifier(JavaModifier.X)` | Any modifier check (SYNCHRONIZED, etc.) | `MemberRulesTest` |
+| `areDeclaredInClassesThat()` | Scope rules to a class type | `MemberRulesTest` |
 
 ---
 

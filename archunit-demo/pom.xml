@@ -16,7 +16,7 @@
     <artifactId>archunit-demo</artifactId>
     <version>1.0.0</version>
     <name>archunit-demo</name>
-    <description>ArchUnit demo application with Spring Boot 4 and Java 25</description>
+    <description>ArchUnit demo application with Spring Boot 4 and Java 21</description>
 
     <properties>
         <java.version>21</java.version>

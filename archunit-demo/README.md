@@ -1,192 +1,397 @@
-# ArchUnit Demo — Spring Boot + Java 21
-
-A demo project showing your team how **ArchUnit** works: architecture rules as
-unit tests, enforced at every build. No external tools, no extra agents — just a
-test dependency that fails the build when someone violates the agreed structure.
-
----
-
-## Stack
-
-| Tool        | Version        |
-|-------------|----------------|
-| Java        | 21             |
-| Spring Boot | 4.0.5          |
-| ArchUnit    | 1.4.1          |
-| JUnit       | 5              |
-| Database    | H2 (in-memory) |
-| Build       | Maven          |
-
----
-
-## Application Structure
-
-The demo app is a minimal product catalogue with a classic 3-tier layered
-architecture:
 
 ```
+ █████╗ ██████╗  ██████╗██╗  ██╗██╗   ██╗███╗   ██╗██╗████████╗
+██╔══██╗██╔══██╗██╔════╝██║  ██║██║   ██║████╗  ██║██║╚══██╔══╝
+███████║██████╔╝██║     ███████║██║   ██║██╔██╗ ██║██║   ██║
+██╔══██║██╔══██╗██║     ██╔══██║██║   ██║██║╚██╗██║██║   ██║
+██║  ██║██║  ██║╚██████╗██║  ██║╚██████╔╝██║ ╚████║██║   ██║
+╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝   ╚═╝
+
+██████╗ ███████╗███╗   ███╗ ██████╗
+██╔══██╗██╔════╝████╗ ████║██╔═══██╗
+██║  ██║█████╗  ██╔████╔██║██║   ██║
+██║  ██║██╔══╝  ██║╚██╔╝██║██║   ██║
+██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝
+╚═════╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝
+```
+
+<div align="center">
+
+> *"You take the red pill — you stay in Wonderland, and I show you how deep the rabbit hole goes."*
+> — Morpheus, on enforcing architecture rules
+
+[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.5-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![ArchUnit](https://img.shields.io/badge/ArchUnit-1.4.1-00FF41?style=for-the-badge&logo=java&logoColor=black)](https://www.archunit.org/)
+[![JUnit 5](https://img.shields.io/badge/JUnit-5-25A162?style=for-the-badge&logo=junit5&logoColor=white)](https://junit.org/junit5/)
+[![Maven](https://img.shields.io/badge/Maven-3.x-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org/)
+[![Build](https://img.shields.io/badge/BUILD-SUCCESS-00FF41?style=for-the-badge)](#)
+
+</div>
+
+---
+
+## ⬛ ENTERING THE MATRIX
+
+```
+01001001 00100000 01101011 01101110 01101111 01110111
+         01110111 01101000 01111001 00100000 01111001
+         01101111 01110101 00100111 01110010 01100101
+         00100000 01101000 01100101 01110010 01100101
+
+         >> I know why you're here.
+         >> You know that something is wrong with your codebase.
+         >> You can feel it — developers bypassing layers,
+            naming things `ProductManager`, injecting repos
+            into controllers...
+         >> The Matrix has you.
+         >> ArchUnit can set you free.
+```
+
+**ArchUnit** turns architecture decisions into executable tests. Every rule lives
+in version control. Every violation fails the build. No manual code reviews
+required. No drift. No excuses.
+
+---
+
+## ⬛ SYSTEM SPECS
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  S Y S T E M   I N F O                  │
+├────────────────────┬────────────────────────────────────┤
+│  Runtime           │  Java 21                           │
+│  Framework         │  Spring Boot 4.0.5                 │
+│  Architecture lib  │  ArchUnit 1.4.1                    │
+│  Test runner       │  JUnit 5                           │
+│  Persistence       │  Spring Data JPA / H2 (in-memory)  │
+│  Build             │  Maven 3.x                         │
+│  Architecture      │  Strict 3-tier layered             │
+│  Tests             │  24 architecture rules             │
+└────────────────────┴────────────────────────────────────┘
+```
+
+---
+
+## ⬛ THE CONSTRUCT — APPLICATION STRUCTURE
+
+```
+ ╔══════════════════════════════════════════════════════╗
+ ║              T H E   M A T R I X   L A Y E R S       ║
+ ╠══════════════════════════════════════════════════════╣
+ ║                                                      ║
+ ║   ┌──────────────────────────────────────────────┐   ║
+ ║   │  [ CONTROLLER ]  ProductController.java       │   ║
+ ║   │  @RestController  ·  /api/products            │   ║
+ ║   │  GET · POST · DELETE                          │   ║
+ ║   └───────────────────┬──────────────────────────┘   ║
+ ║                       │  may only call ↓              ║
+ ║   ┌───────────────────▼──────────────────────────┐   ║
+ ║   │  [ SERVICE ]     ProductService.java          │   ║
+ ║   │  @Service  ·  Business logic                  │   ║
+ ║   │  findAll · findById · save · deleteById       │   ║
+ ║   └───────────────────┬──────────────────────────┘   ║
+ ║                       │  may only call ↓              ║
+ ║   ┌───────────────────▼──────────────────────────┐   ║
+ ║   │  [ REPOSITORY ]  ProductRepository.java       │   ║
+ ║   │  @Repository  ·  JpaRepository<Product, Long> │   ║
+ ║   │  Zero-boilerplate CRUD from Spring Data        │   ║
+ ║   └───────────────────┬──────────────────────────┘   ║
+ ║                       │  may only call ↓              ║
+ ║   ┌───────────────────▼──────────────────────────┐   ║
+ ║   │  [ MODEL ]       Product.java                 │   ║
+ ║   │  @Entity  ·  id · name · price                │   ║
+ ║   │  Accessible by all layers                     │   ║
+ ║   └──────────────────────────────────────────────┘   ║
+ ║                                                      ║
+ ╚══════════════════════════════════════════════════════╝
+
 src/main/java/com/demo/archunit/
-├── controller/   ProductController.java    ← REST endpoints  (@RestController)
-├── service/      ProductService.java       ← Business logic  (@Service)
-├── repository/   ProductRepository.java    ← Data access     (@Repository / JpaRepository)
-└── model/        Product.java              ← Domain entity   (@Entity)
-```
+├── controller/   ProductController.java
+├── service/      ProductService.java
+├── repository/   ProductRepository.java
+└── model/        Product.java
 
-Dependency direction is strictly top-down:
-
-```
-Controller  →  Service  →  Repository  →  Model
+src/test/java/com/demo/archunit/architecture/
+├── LayerArchitectureTest.java
+├── NamingConventionTest.java
+├── AnnotationRuleTest.java
+├── DependencyRuleTest.java
+├── CodingRulesTest.java          ← shared rule libraries + custom conditions
+├── FreezingArchRuleTest.java     ← incremental adoption for legacy codebases
+└── PlantUmlArchitectureTest.java ← diagram IS the test
 ```
 
 ---
 
-## Architecture Tests
+## ⬛ SENTINELS — THE 7 GUARDIAN RULES
 
-All tests live in `src/test/java/com/demo/archunit/architecture/` and run as
-normal JUnit 5 tests via `mvn test`.
+```
+  /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+  \/  RULE MATRIX — 24 tests · 7 classes · 0 mercy    \/
+  /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+```
 
-### 1. `LayerArchitectureTest`
-Uses ArchUnit's `layeredArchitecture()` DSL to declare which layer may call
-which. Any upward or skip-level dependency fails the build immediately with a
-human-readable message.
+### `[01]` LayerArchitectureTest
 
-### 2. `NamingConventionTest`
-Enforces naming discipline in both directions:
-- Classes in the `controller` package must end with `Controller` (and vice versa)
-- Classes in the `service` package must end with `Service` (and vice versa)
-- Classes in the `repository` package must end with `Repository` (and vice versa)
-- No class may be named `*Manager` (explicit negative rule)
+The first and hardest pill. ArchUnit's `layeredArchitecture()` DSL enforces
+strict one-way dependency flow. Upward calls and layer skips are **instantly
+fatal**.
 
-### 3. `AnnotationRuleTest`
-Ensures Spring stereotypes are always present:
-- Every service class must carry `@Service`
-- Every controller class must carry `@RestController`
-- Every repository interface must extend `JpaRepository`
+```
+  CONTROLLER  ──▶  SERVICE  ──▶  REPOSITORY  ──▶  MODEL
+      ✗──────────────────────────────▶ skip NOT allowed
+      ✗──────────────────────▶ upward NOT allowed
+```
 
-### 4. `DependencyRuleTest`
-Guards against upward and circular dependencies using `noClasses().should()` and
-`SlicesRuleDefinition.slices().cycle()` rules.
+---
 
-### 5. `CodingRulesTest`
-Two advanced ArchUnit patterns in one class:
+### `[02]` NamingConventionTest
 
-**Shared rule library** — imports `ArchTests.in(SharedArchRules.class)`, a
-reusable rule set that can be shared across multiple repositories. The shared
-rules ban:
-- `System.out` / `System.err` usage (use a logger)
-- Throwing generic `Exception` or `RuntimeException`
-- `java.util.logging` (use SLF4J)
-- `@Autowired` field injection (constructor injection only)
-- Calls to deprecated APIs
-- Legacy `java.util.Date` / `java.util.Calendar`
+*"What is real? How do you define 'real'?"* — A `ProductManager` is not real.
 
-**Custom condition** — a bespoke `ArchCondition` that limits constructor
-parameter count to 5, enforcing the Single Responsibility Principle on Spring
-beans.
+```
+  RULE ① : *.controller.*  →  name must end with  Controller
+  RULE ② : *.service.*     →  name must end with  Service
+  RULE ③ : *.repository.*  →  name must end with  Repository
+  RULE ④ : *Controller     →  must live in        controller package
+  RULE ⑤ : *Service        →  must live in        service package
+  RULE ⑥ : *Repository     →  must live in        repository package
+  RULE ⑦ : *Manager        →  ██ FORBIDDEN ██
+```
 
-### 6. `FreezingArchRuleTest`
-Demonstrates how to adopt ArchUnit on a messy, existing codebase without
-immediately turning the build red.
+---
 
-`FreezingArchRule.freeze(rule)` works in two phases:
-1. **First run** — all current violations are recorded to
-   `src/test/resources/archunit_store/`. Commit these files so every developer
-   shares the same baseline.
-2. **Subsequent runs** — only *new* violations (not in the store) fail the
-   build. Fix violations incrementally; they auto-clear from the store once
-   resolved.
+### `[03]` AnnotationRuleTest
 
-### 7. `PlantUmlArchitectureTest`
-Reads `src/test/resources/architecture.puml` at test time and enforces whatever
-dependency arrows are drawn in the diagram:
+Ensures Spring stereotypes are never forgotten:
+
+```java
+  @RestController  ← required on every class in controller package
+  @Service         ← required on every class in service package
+  JpaRepository    ← every repository interface must extend it
+```
+
+---
+
+### `[04]` DependencyRuleTest
+
+No upward deps. No circular deps. No exceptions.
+
+```
+  Repositories  ──▶  Services?      ██ ILLEGAL ██
+  Services      ──▶  Controllers?   ██ ILLEGAL ██
+  Repositories  ──▶  Controllers?   ██ ILLEGAL ██
+  A ──▶ B ──▶ C ──▶ A ?             ██ CYCLE DETECTED ██
+```
+
+---
+
+### `[05]` CodingRulesTest
+
+Two advanced patterns fused into one:
+
+**① Shared Rule Library** — imports `ArchTests.in(SharedArchRules.class)`,
+a portable rule set you can distribute as a JAR across every repo in your org:
+
+```
+  ██ System.out / System.err             → use a logger
+  ██ throws Exception / RuntimeException → be specific
+  ██ java.util.logging                   → use SLF4J
+  ██ @Autowired field injection          → constructor injection only
+  ██ deprecated API calls                → upgrade your deps
+  ██ java.util.Date / Calendar           → use java.time
+```
+
+**② Custom ArchCondition** — a bespoke rule that counts constructor parameters
+on Spring beans. More than 5? Your class has too many responsibilities.
+
+```java
+  // THE RED PILL: your class has 9 constructor parameters.
+  // You are not following the Single Responsibility Principle.
+  // Wake up, Neo.
+```
+
+---
+
+### `[06]` FreezingArchRuleTest
+
+*For those who were already in the Matrix before ArchUnit arrived.*
+
+```
+  ┌─────────────────────────────────────────────────────┐
+  │  LEGACY CODEBASE DETECTED                           │
+  │                                                     │
+  │  Existing violations: FROZEN  ← recorded to store  │
+  │  New violations:      FATAL   ← break the build     │
+  │                                                     │
+  │  Fix violations incrementally.                      │
+  │  Each one resolved auto-clears from the store.      │
+  │  No big-bang rewrite required.                      │
+  └─────────────────────────────────────────────────────┘
+```
+
+Frozen state lives in `src/test/resources/archunit_store/` — **commit these
+files** so every developer shares the same baseline.
+
+---
+
+### `[07]` PlantUmlArchitectureTest
+
+The diagram is not documentation. **The diagram is the test.**
 
 ```plantuml
+@startuml
+[Controller] <<..controller..>>
+[Service]    <<..service..>>
+[Repository] <<..repository..>>
+[Model]      <<..model..>>
+
 [Controller] --> [Service]
 [Controller] --> [Model]
 [Service]    --> [Repository]
 [Service]    --> [Model]
 [Repository] --> [Model]
+@enduml
 ```
 
-The diagram *is* the enforced spec — no drift possible. Non-developers can
-propose architecture changes by editing the diagram file.
+Any Java dependency not represented by an arrow in `architecture.puml` **fails
+the build**. Non-developers can propose architecture changes by editing the
+diagram — no Java knowledge required.
 
 ---
 
-## Running the Tests
+## ⬛ JACKING IN — RUN THE TESTS
 
 ```bash
+# Enter the Matrix
 mvn test
-# → BUILD SUCCESS  (all 24 architecture tests pass)
+
+# Expected output:
+# -------------------------------------------------------
+#  T E S T S
+# -------------------------------------------------------
+# Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+#
+# BUILD SUCCESS
+# Total time: 3.141 s
 ```
 
 ---
 
-## Demo Script
+## ⬛ THE DEMO — TAKE THE RED PILL
 
-### Step 1 — Show a clean build
+### ▶ Phase 1 — Show the green build
+
 ```bash
-mvn test
-# → BUILD SUCCESS
+mvn test   # → BUILD SUCCESS
 ```
 
-### Step 2 — Layer violation
+### ▶ Phase 2 — Introduce a layer violation
+
 In `ProductController.java`, inject `ProductRepository` directly:
+
 ```java
-private final ProductRepository productRepository; // ← bypass the service layer
+// VIOLATION: Controller bypassing Service to reach Repository
+private final ProductRepository productRepository;
 ```
+
 ```bash
 mvn test
-# LayerArchitectureTest FAILS:
+# ✗ LayerArchitectureTest FAILED
+#
+#   Architecture violation in (ProductController.java):
 #   "Repository was accessed by Controller,
 #    but Repository may only be accessed by Service"
 ```
 
-### Step 3 — Naming violation
-Rename `ProductService` to `ProductManager`:
+### ▶ Phase 3 — Introduce a naming violation
+
+Rename `ProductService` → `ProductManager`:
+
 ```bash
 mvn test
-# NamingConventionTest FAILS:
-#   "classes in package 'service' should have name ending with 'Service'"
-#   "no class should have name ending with 'Manager'"
+# ✗ NamingConventionTest FAILED
+#
+#   classes in package '..service..' should have simple name ending with
+#   'Service', but the following classes do not:
+#   com.demo.archunit.service.ProductManager
+#
+#   no class should have simple name ending with 'Manager'
 ```
 
-### Step 4 — Annotation violation
+### ▶ Phase 4 — Introduce an annotation violation
+
 Remove `@Service` from `ProductService`:
+
 ```bash
 mvn test
-# AnnotationRuleTest FAILS:
-#   "classes in 'service' package should be annotated with @Service"
+# ✗ AnnotationRuleTest FAILED
+#
+#   classes in 'service' package should be annotated with @Service,
+#   but com.demo.archunit.service.ProductService is not.
 ```
 
-### Step 5 — Restore and celebrate
+### ▶ Phase 5 — Restore and take the exit
+
 ```bash
-mvn test
-# → BUILD SUCCESS — architecture is protected!
+mvn test   # → BUILD SUCCESS — architecture is protected
 ```
 
 ---
 
-## Why ArchUnit?
+## ⬛ WHY ARCHUNIT?
 
-| Problem | ArchUnit solution |
-|---|---|
-| Architecture decisions get lost | Rules live in version control like any other code |
-| Violations sneak through code review | Caught at build time — before merge |
-| Diagrams drift from reality | `PlantUmlArchitectureTest` makes the diagram the test |
-| Legacy code has too many violations to fix at once | `FreezingArchRule` lets you adopt rules incrementally |
-| Same standards across many repos | Package `SharedArchRules` as a library and share it |
+```
+┌──────────────────────────────────────┬──────────────────────────────────────────┐
+│  THE OLD WORLD (without ArchUnit)    │  THE MATRIX (with ArchUnit)              │
+├──────────────────────────────────────┼──────────────────────────────────────────┤
+│  Architecture docs rot instantly     │  Rules live in git — they can't drift    │
+│  Violations caught in code review    │  Violations caught at build time         │
+│  Diagrams lie                        │  PlantUML diagram IS the test            │
+│  Legacy code blocks adoption         │  FreezingArchRule — adopt incrementally  │
+│  Standards differ across repos       │  SharedArchRules — one JAR, every repo   │
+│  "We just need to be more careful"   │  The machine enforces it. Always.        │
+└──────────────────────────────────────┴──────────────────────────────────────────┘
+```
 
 ---
 
-## Key ArchUnit APIs Used
+## ⬛ CHEAT SHEET — KEY ARCHUNIT APIS
 
-| API | Where |
-|-----|-------|
-| `layeredArchitecture()` | `LayerArchitectureTest` |
-| `classes().that()…should()` | `NamingConventionTest` |
-| `beAnnotatedWith()` | `AnnotationRuleTest` |
-| `noClasses().should()` / `SlicesRuleDefinition` | `DependencyRuleTest` |
-| `ArchTests.in()` · `ArchCondition` | `CodingRulesTest` |
-| `FreezingArchRule.freeze()` | `FreezingArchRuleTest` |
-| `classes().should().adhereToPlantUmlDiagram()` | `PlantUmlArchitectureTest` |
+| API | Power | Used in |
+|-----|-------|---------|
+| `layeredArchitecture()` | Declare and enforce layers | `LayerArchitectureTest` |
+| `classes().that()…should()` | Fluent rule builder | `NamingConventionTest` |
+| `beAnnotatedWith()` | Annotation enforcement | `AnnotationRuleTest` |
+| `noClasses().should()` | Negative rules | `DependencyRuleTest` |
+| `SlicesRuleDefinition.slices()` | Cycle detection | `DependencyRuleTest` |
+| `ArchTests.in(SharedRules.class)` | Portable rule libraries | `CodingRulesTest` |
+| `ArchCondition<JavaClass>` | Custom violation logic | `CodingRulesTest` |
+| `FreezingArchRule.freeze(rule)` | Legacy adoption | `FreezingArchRuleTest` |
+| `adhereToPlantUmlDiagram()` | Diagram-driven tests | `PlantUmlArchitectureTest` |
+
+---
+
+<div align="center">
+
+```
+  ┌─────────────────────────────────────────────┐
+  │                                             │
+  │   This is your last chance.                 │
+  │                                             │
+  │   You take the BLUE pill — the story ends.  │
+  │   Your codebase keeps degrading.            │
+  │                                             │
+  │   You take the RED pill — you add ArchUnit. │
+  │   And I show you how deep the rabbit        │
+  │   hole goes.                                │
+  │                                             │
+  │             [ BLUE ]      [ RED  ]          │
+  │                                             │
+  └─────────────────────────────────────────────┘
+```
+
+*"The Matrix is everywhere. It is all around us."*
+
+</div>

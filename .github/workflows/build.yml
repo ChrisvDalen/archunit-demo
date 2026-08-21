@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ master, "agent/**", "claude/**" ]
+    branches: [master]
   pull_request:
     branches: [ master ]
 
@@ -17,15 +17,15 @@ jobs:
         working-directory: archunit-demo
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
           cache: maven
           cache-dependency-path: archunit-demo/pom.xml
 
       - name: Verify
-        run: ./mvnw --batch-mode verify
+        run: ./mvnw --batch-mode --no-transfer-progress verify

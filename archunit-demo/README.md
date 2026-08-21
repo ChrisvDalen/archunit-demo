@@ -20,9 +20,9 @@
 > *"You take the red pill — you stay in Wonderland, and I show you how deep the rabbit hole goes."*
 > — Morpheus, on enforcing architecture rules
 
-[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.5-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![ArchUnit](https://img.shields.io/badge/ArchUnit-1.4.1-00FF41?style=for-the-badge&logo=java&logoColor=black)](https://www.archunit.org/)
+[![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/25/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![ArchUnit](https://img.shields.io/badge/ArchUnit-1.5.0-00FF41?style=for-the-badge&logo=java&logoColor=black)](https://www.archunit.org/)
 [![JUnit 5](https://img.shields.io/badge/JUnit-5-25A162?style=for-the-badge&logo=junit5&logoColor=white)](https://junit.org/junit5/)
 [![Maven](https://img.shields.io/badge/Maven-3.x-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org/)
 [![Build](https://img.shields.io/badge/BUILD-SUCCESS-00FF41?style=for-the-badge)](#)
@@ -60,12 +60,12 @@ required. No drift. No excuses.
 ┌─────────────────────────────────────────────────────────┐
 │                  S Y S T E M   I N F O                  │
 ├────────────────────┬────────────────────────────────────┤
-│  Runtime           │  Java 21                           │
-│  Framework         │  Spring Boot 4.0.5                 │
-│  Architecture lib  │  ArchUnit 1.4.1                    │
+│  Runtime           │  Java 25                           │
+│  Framework         │  Spring Boot 4.1.1                 │
+│  Architecture lib  │  ArchUnit 1.5.0                    │
 │  Test runner       │  JUnit 5                           │
 │  Persistence       │  Spring Data JPA / H2 (in-memory)  │
-│  Build             │  Maven 3.x                         │
+│  Build             │  Maven 3.9.16                      │
 │  Architecture      │  Strict 3-tier layered             │
 │  Tests             │  28 architecture rules             │
 └────────────────────┴────────────────────────────────────┘

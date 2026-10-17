@@ -20,7 +20,7 @@
 
     <properties>
         <java.version>25</java.version>
-        <archunit.version>1.5.0</archunit.version>
+        <archunit.version>1.5.1</archunit.version>
     </properties>
 
     <dependencies>
